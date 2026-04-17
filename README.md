@@ -52,7 +52,7 @@
 
 ```bash
 cd ~/.openclaw/workspace/skills
-git clone https://github.com/YOUR_USERNAME/harness-dev-skill.git harness-dev
+git clone https://github.com/jishengkaimiguel-lgtm/harness-dev-skill.git harness-dev
 ```
 
 #### 2. 触发开发
@@ -141,7 +141,7 @@ Clone this repo to OpenClaw's skills directory:
 
 ```bash
 cd ~/.openclaw/workspace/skills
-git clone https://github.com/YOUR_USERNAME/harness-dev-skill.git harness-dev
+git clone https://github.com/jishengkaimiguel-lgtm/harness-dev-skill.git harness-dev
 ```
 
 #### 2. Trigger Development
