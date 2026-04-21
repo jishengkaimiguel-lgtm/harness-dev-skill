@@ -44,15 +44,60 @@ description: |
 - **验证**：每个 Sprint 都有明确的完成标准
 - **记忆**：通过结构化工件传递上下文
 
-## 三代理架构
+## 四代理架构（优化版）
 
 ```
-用户需求 ──▶ Planner ──▶ Generator ──▶ Evaluator
-                │            │            │
-                ▼            ▼            ▼
-            产品规格      功能实现      测试评分
-         (spec.md)    (代码文件)   (eval_report.md)
+用户需求 ──▶ Planner ──▶ Generator ──▶ Inspector ──▶ Evaluator
+                │            │            │            │
+                ▼            ▼            ▼            ▼
+            产品规格      功能实现      预检查报告    测试评分
+         (spec.md)    (代码文件)   (inspect_report.md) (eval_report.md)
 ```
+
+### 新增：Inspector（检查员）
+
+**定位**：在 Generator 完成后、Evaluator 测试前，进行系统性预检查
+
+**目标**：在测试前发现 80% 的低级错误，减少 Evaluator 的无效测试轮次
+
+**检查清单**：
+
+#### 1. 代码完整性检查
+- [ ] 所有声明的文件是否都存在？
+- [ ] 入口文件是否完整？（如 app.js、main.py、index.html）
+- [ ] 配置文件是否缺失？（package.json、app.json、.env）
+
+#### 2. 语法/格式检查
+- [ ] JavaScript：运行 `node --check`
+- [ ] JSON：验证格式（无 trailing comma）
+- [ ] CSS/WXSS：检查语法错误
+- [ ] SQL：检查语句完整性
+
+#### 3. 命名一致性检查
+- [ ] API 地址是否统一？（全局搜索域名/IP）
+- [ ] 变量命名是否一致？（camelCase vs snake_case）
+- [ ] 数据库字段与代码是否匹配？
+
+#### 4. 配置文件检查
+- [ ] 环境变量是否区分 dev/prod？
+- [ ] 敏感信息是否硬编码？
+- [ ] 端口配置是否正确？
+
+#### 5. 数据库兼容性检查
+- [ ] 表结构是否存在？
+- [ ] 字段类型是否匹配？（enum、varchar 长度）
+- [ ] 索引是否合理？
+
+#### 6. 安全/权限检查
+- [ ] 是否有权限控制？
+- [ ] 输入是否验证？
+- [ ] 是否有 SQL 注入风险？
+
+**输出**：`inspect_report.md`
+- 检查项通过率
+- 发现的问题列表（按严重程度）
+- 修复建议
+- 是否允许进入 Evaluator 阶段
 
 ### 1. Planner（规划者）
 
@@ -122,12 +167,18 @@ Planner 思考：
 └── feature_list.json（10个功能点）
 ```
 
-### Phase 2: Sprint 合约（Generator + Evaluator）
+### Phase 2: Sprint 合约（Generator + Inspector + Evaluator）
 
 ```
 Generator：我提议 Sprint 1 实现「添加任务」功能
 - 实现：输入框 + 添加按钮
 - 验证：用户可以输入任务并看到它出现在列表中
+
+Inspector：预检查通过标准：
+- app.json 格式正确（无 trailing comma）
+- app.js 入口文件存在
+- 无 console.log 调试代码残留
+- API 地址统一
 
 Evaluator：同意，但还需要验证：
 - 空输入的处理
@@ -137,10 +188,34 @@ Evaluator：同意，但还需要验证：
 达成一致，开始实现。
 ```
 
-### Phase 3: 实现与评估（循环）
+### Phase 3: 实现与检查（新增 Inspector）
 
 ```
 Generator：实现 Sprint 1
+
+Inspector：自动执行检查清单
+  1. 代码完整性检查
+     - ✅ app.js 存在
+     - ✅ app.json 格式正确
+     - ❌ config.js 缺失 API 配置
+  
+  2. 命名一致性检查
+     - ❌ 发现 2 处 API 地址不一致
+       - pages/index/index.js: http://119.45.36.137:3000
+       - pages/create-trip/create-trip.js: https://mimitravelsplit.fun
+  
+  3. 语法检查
+     - ✅ 所有 JS 文件语法正确
+     - ❌ app.json 有 trailing comma
+
+检查报告：
+- 严重问题：2 个（必须修复）
+- 警告：1 个（建议修复）
+- 评分：5/10（不通过，需修复后重新检查）
+
+Generator：修复问题
+Inspector：重新检查 → 评分 9/10（通过）
+
 Evaluator：测试并评分
          - 功能性：9/10（基本功能工作，但缺少长度限制）
          - 代码质量：8/10
@@ -165,13 +240,18 @@ project/
 │   ├── spec.md           # 产品规格（Planner 输出）
 │   ├── feature_list.json # 功能清单
 │   ├── progress.txt      # 进度日志
-│   └── eval_reports/     # 评估报告
+│   ├── inspect_reports/  # 检查报告（Inspector 输出）★新增
+│   │   ├── sprint_01.md
+│   │   └── ...
+│   └── eval_reports/     # 评估报告（Evaluator 输出）
 │       ├── sprint_01.md
 │       ├── sprint_02.md
 │       └── ...
-├── src/                   # 源代码
-├── tests/                 # 测试文件
-└── init.sh               # 环境初始化脚本
+├── scripts/              # 自动化脚本 ★新增
+│   └── inspect.sh        # Inspector 检查脚本
+├── src/                  # 源代码
+├── tests/                # 测试文件
+└── init.sh              # 环境初始化脚本
 ```
 
 ## 使用指南
@@ -273,6 +353,178 @@ project/
 - [ ] 文档完整（README、使用说明）
 - [ ] 配置说明（如何运行、如何部署）
 - [ ] 测试覆盖（关键功能有测试）
+
+## Inspector 自动化工具
+
+### 快速检查命令
+
+```bash
+# 1. 检查所有 API 地址是否一致
+grep -r "http" src/ | grep -E "(api|localhost|127\.0\.0\.1)" | sort | uniq
+
+# 2. 检查 JSON 语法
+find . -name "*.json" -exec node -e "JSON.parse(require('fs').readFileSync('{}'))" \;
+
+# 3. 检查 JS 语法
+find . -name "*.js" -exec node --check {} \;
+
+# 4. 检查入口文件是否存在
+ls -la src/app.js src/app.json src/app.wxss 2>/dev/null || echo "缺失入口文件"
+
+# 5. 检查数据库字段（MySQL）
+mysql -u user -p -e "DESCRIBE database.table;"
+
+# 6. 检查是否有 TODO/调试代码
+grep -r "TODO\|FIXME\|console.log\|debugger" src/ --include="*.js"
+```
+
+### 检查脚本模板
+
+创建 `scripts/inspect.sh`：
+
+```bash
+#!/bin/bash
+
+echo "🔍 Harness Inspector 检查中..."
+
+# 颜色定义
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+ERRORS=0
+WARNINGS=0
+
+# 1. 检查入口文件
+echo -e "\n📁 检查入口文件..."
+if [ ! -f "src/app.js" ]; then
+    echo -e "${RED}❌ 缺失 src/app.js${NC}"
+    ((ERRORS++))
+else
+    echo -e "${GREEN}✅ src/app.js 存在${NC}"
+fi
+
+# 2. 检查 JSON 语法
+echo -e "\n📋 检查 JSON 语法..."
+for file in $(find src -name "*.json"); do
+    if node -e "JSON.parse(require('fs').readFileSync('$file'))" 2>/dev/null; then
+        echo -e "${GREEN}✅ $file${NC}"
+    else
+        echo -e "${RED}❌ $file 格式错误${NC}"
+        ((ERRORS++))
+    fi
+done
+
+# 3. 检查 JS 语法
+echo -e "\n🔧 检查 JS 语法..."
+for file in $(find src -name "*.js"); do
+    if node --check "$file" 2>/dev/null; then
+        echo -e "${GREEN}✅ $file${NC}"
+    else
+        echo -e "${RED}❌ $file 语法错误${NC}"
+        ((ERRORS++))
+    fi
+done
+
+# 4. 检查 API 地址一致性
+echo -e "\n🌐 检查 API 地址..."
+APIS=$(grep -r "http" src/ --include="*.js" | grep -v "// " | wc -l)
+UNIQUE_APIS=$(grep -r "http" src/ --include="*.js" | grep -v "// " | sort | uniq | wc -l)
+if [ "$APIS" -eq "$UNIQUE_APIS" ]; then
+    echo -e "${GREEN}✅ API 地址一致${NC}"
+else
+    echo -e "${YELLOW}⚠️ 发现 $((APIS - UNIQUE_APIS)) 处不一致${NC}"
+    ((WARNINGS++))
+fi
+
+# 5. 检查 TODO/调试代码
+echo -e "\n🔍 检查调试代码..."
+TODOS=$(grep -r "TODO\|FIXME\|console.log" src/ --include="*.js" | wc -l)
+if [ "$TODOS" -eq 0 ]; then
+    echo -e "${GREEN}✅ 无调试代码残留${NC}"
+else
+    echo -e "${YELLOW}⚠️ 发现 $TODOS 处调试代码${NC}"
+    ((WARNINGS++))
+fi
+
+# 总结
+echo -e "\n📊 检查报告"
+echo "==================="
+if [ $ERRORS -eq 0 ] && [ $WARNINGS -eq 0 ]; then
+    echo -e "${GREEN}✅ 全部通过，可以进入 Evaluator 阶段${NC}"
+    exit 0
+elif [ $ERRORS -eq 0 ]; then
+    echo -e "${YELLOW}⚠️ 有 $WARNINGS 个警告，建议修复${NC}"
+    exit 0
+else
+    echo -e "${RED}❌ 有 $ERRORS 个错误，必须修复${NC}"
+    exit 1
+fi
+```
+
+## 经验教训（来自 TripSplit V1.0 实战）
+
+### 问题 1：API 地址不一致
+**现象**：前端调用 `https://mimitravelsplit.fun`，但后端实际在 `http://119.45.36.137:3000`
+**影响**：网络请求失败，功能无法测试
+**解决方案**：
+- 创建 `config.js` 统一配置 API 地址
+- 每次修改后用 `grep` 检查所有文件
+- 使用环境变量区分开发和生产环境
+
+### 问题 2：数据库字段不匹配
+**现象**：`status` 字段是 `enum('active','deleted')`，但代码设置 `'ended'`
+**影响**："Data truncated for column status" 错误
+**解决方案**：
+- 修改数据库前先查看现有结构：`DESCRIBE table`
+- 使用 `ALTER TABLE` 添加新枚举值
+- 或修改代码使用现有枚举值
+
+### 问题 3：命名不一致
+**现象**：后端返回 `inviteCode`，前端使用 `invite_code`
+**影响**：数据绑定不显示
+**解决方案**：
+- 统一命名规范（推荐 snake_case 用于数据库/API）
+- 创建数据转换层统一处理
+
+### 问题 4：软删除未过滤
+**现象**：删除后记录仍在列表显示
+**影响**：用户困惑，数据混乱
+**解决方案**：
+- 所有查询添加 `WHERE status != 'deleted'`
+- 或数据库层面使用视图过滤
+
+### 问题 5：浮点数精度
+**现象**：显示 `¥626.6599999999999` 而不是 `¥626.66`
+**影响**：UI 不专业
+**解决方案**：
+- 后端返回前 `toFixed(2)`
+- 或使用 WXS 过滤器格式化
+
+### 问题 6：权限控制缺失
+**现象**：任何用户都能删除/修改任何旅程
+**影响**：数据安全问题
+**解决方案**：
+- 每个操作检查 `created_by === userId`
+- 后端返回 403 无权操作
+
+### 开发流程优化建议
+
+1. **开始前**：
+   - [ ] 确认技术栈和部署环境
+   - [ ] 设计数据库表结构
+   - [ ] 定义 API 接口规范
+
+2. **开发中**：
+   - [ ] 每个 Sprint 后运行语法检查
+   - [ ] 使用 `grep` 确保命名一致
+   - [ ] 测试边界情况（空数据、权限错误）
+
+3. **发布前**：
+   - [ ] 全局搜索 TODO/测试代码
+   - [ ] 确认生产环境配置
+   - [ ] 数据库备份
 
 ## 常见问题
 
